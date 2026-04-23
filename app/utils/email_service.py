@@ -1,28 +1,39 @@
-from fastapi_mail import FastMail, MessageSchema, MessageType
-from app.core.config import conf
+import resend
+import os
+from dotenv import load_dotenv
 
-import random
+load_dotenv()
+resend.api_key = os.getenv("RESEND_API_KEY")
 
 async def send_verification_otp(email_to: str, otp: str):
-    html = f"""
-    <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
-        <div style="max-width: 400px; margin: auto; background: white; padding: 30px; border-radius: 10px; text-align: center;">
-            <h2 style="color: #333;">Xác thực tài khoản DocuMind</h2>
-            <p style="color: #666;">Mã xác thực của sếp là:</p>
-            <div style="font-size: 32px; font-weight: bold; color: #4A90E2; letter-spacing: 5px; margin: 20px 0; padding: 10px; border: 2px dashed #4A90E2;">
-                {otp}
+    try:
+        # 1. Chuẩn bị nội dung HTML
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+            <div style="max-width: 400px; margin: auto; background: white; padding: 30px; border-radius: 10px; text-align: center;">
+                <h2 style="color: #333;">Verify DocuMind's Account</h2>
+                <p style="color: #666;">Your verification code is:</p>
+                <div style="font-size: 32px; font-weight: bold; color: #4A90E2; letter-spacing: 5px; margin: 20px 0; padding: 10px; border: 2px dashed #4A90E2;">
+                    {otp}
+                </div>
+                <p style="font-size: 12px; color: #999;">This code is valid for 10 minutes. Please do not share it with anyone.</p>
             </div>
-            <p style="font-size: 12px; color: #999;">Mã này có hiệu lực trong 10 phút. Đừng chia sẻ cho ai kẻo bị hack mất mindmap nhé!</p>
         </div>
-    </div>
-    """
+        """
 
-    message = MessageSchema(
-        subject="[DocuMind] Mã xác thực đăng ký",
-        recipients=[email_to],
-        body=html,
-        subtype=MessageType.html
-    )
+        # 2. Tạo dictionary đúng cấu trúc của Resend
+        params = {
+            "from": "DocuMind <admin@duymanhdo.id.vn>", # Bắt buộc dùng email này nếu sếp chưa add domain
+            "to": [email_to],      
+            "subject": "[DocuMind] Verification Code",
+            "html": html_content
+        }
 
-    fm = FastMail(conf)
-    await fm.send_message(message)
+     
+        r = resend.Emails.send(params)
+        print(f"Mail sent successfully to {email_to}")
+        return r
+
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return None
