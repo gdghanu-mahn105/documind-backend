@@ -20,8 +20,8 @@ app = FastAPI(title="Documind API")
 origins = [    
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://ten-mien-cua-sep.com", 
-    "*"                        
+    "https://duymanhdo.id.vn",
+    "https://www.duymanhdo.id.vn"                      
 ]
 app.add_middleware(
     CORSMiddleware,
