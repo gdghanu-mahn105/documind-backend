@@ -76,7 +76,7 @@ async def process_text_into_knowledge_graph(text: str, document_id: int):
         print(f"[INSERT ERROR]: {e}")
         raise e 
 
-async def generate_quiz_from_rag(document_id: int, num_questions: int = 10, difficulty: str ="MEDIUM"):
+async def generate_quiz_from_rag(document_id: int, num_questions: int = 10, difficulty: str ="MEDIUM", user_hint: str = None):
     difficulty = difficulty.upper()
 
     rag_engine = get_rag_engine(document_id)
@@ -111,6 +111,10 @@ async def generate_quiz_from_rag(document_id: int, num_questions: int = 10, diff
         document_context = None
 
     if document_context:
+        additional_instruction = ""
+        if user_hint:
+            additional_instruction = f"\nUSER SPECIFIC REQUIREMENT: {user_hint}. Please prioritize this requirement while generating."
+
         prompt = f"""[Theory, concepts, definitions, characteristics, lesson content, algorithms, code]
 
         Document Context: {document_context}
@@ -130,8 +134,12 @@ async def generate_quiz_from_rag(document_id: int, num_questions: int = 10, diff
             }}
         ]
         }}
-        Note: Do not add A, B, C, D prefixes to the options."""
+        Note: Do not add A, B, C, D prefixes to the options.{additional_instruction}"""
     else:
+        additional_instruction = ""
+        if user_hint:
+            additional_instruction = f"\nUSER SPECIFIC REQUIREMENT: {user_hint}. Please prioritize this requirement while generating."
+
         prompt = f"""[Theory, concepts, definitions, characteristics, lesson content, algorithms, code]
 
         Please generate {num_questions} multiple-choice questions.
@@ -150,7 +158,7 @@ async def generate_quiz_from_rag(document_id: int, num_questions: int = 10, diff
             }}
         ]
         }}
-        Note: Do not add A, B, C, D prefixes to the options."""
+        Note: Do not add A, B, C, D prefixes to the options.{additional_instruction}"""
 
     try:
         query_param = QueryParam(mode="naive", top_k=20, chunk_top_k=20)
@@ -246,10 +254,14 @@ async def generate_summary_from_rag(document_id: int):
     return clean_markdown
 
 
-async def generate_single_essay_question(document_id: int):
+async def generate_single_essay_question(document_id: int, user_hint: str = None):
     query = "What is the most central and complex topic in this document that would be suitable for an academic essay?"
 
-    llm_instruction = """
+    additional_instruction = ""
+    if user_hint:
+        additional_instruction = f"\nUSER SPECIFIC REQUIREMENT: {user_hint}. Please prioritize this requirement while generating."
+
+    llm_instruction = f"""
     Role: Senior University Professor.
     Task: Create EXACTLY ONE high-quality essay assignment based on the provided context.
     
@@ -258,6 +270,8 @@ async def generate_single_essay_question(document_id: int):
     - 'quick_explanation': A 1-sentence summary of the essay's core objective.
     - 'essay_content': The actual detailed essay prompt/question.
     - 'max_grade': 0.0
+
+    {additional_instruction}
 
     Return ONLY the JSON object.
     """
@@ -306,7 +320,7 @@ async def evaluate_essay_submission(essay_question: str, user_answer: str, conte
     return json.loads(re.search(r'\{.*\}', result, re.DOTALL).group(0))
 
 
-async def generate_mindmap_from_rag(document_id: int):
+async def generate_mindmap_from_rag(document_id: int, user_hint: str = None):
     def has_no_context(text: str | None) -> bool:
         if not text:
             return True
@@ -346,6 +360,10 @@ async def generate_mindmap_from_rag(document_id: int):
         document_context = None
 
     if document_context:
+        additional_instruction = ""
+        if user_hint:
+            additional_instruction = f"\nUSER SPECIFIC REQUIREMENT: {user_hint}. Please prioritize this requirement while generating."
+
         prompt = f"""Based on the following document context, create a detailed mindmap in JSON format.
 
         Document Context: {document_context}
@@ -357,6 +375,7 @@ async def generate_mindmap_from_rag(document_id: int):
         - For each main branch, include specific subpoints, examples, or supporting details as child nodes.
         - Output the mindmap in English.
         - No markdown, no explanation outside JSON.
+        {additional_instruction}
         """
 
         try:

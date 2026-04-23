@@ -6,7 +6,7 @@ from datetime import datetime
 class QuizService:
 
     @staticmethod
-    def save_generated_quiz_to_db(db: Session, quiz_json: dict, document_id: int, user_id: int):
+    def save_generated_quiz_to_db(db: Session, quiz_json: dict, document_id: int, user_id: int, user_hint: str = None):
         try:
             
             estimated_time = QuizService.calculate_estimated_time(quiz_json)
@@ -17,7 +17,9 @@ class QuizService:
                 description= quiz_json.get("quiz_description"),
                 difficulty=quiz_json.get("difficulty", "MEDIUM").upper(),
                 estimated_time = estimated_time,
-                max_grade=0.0
+                max_grade=0.0,
+                user_hint=user_hint,
+                num_questions=len(quiz_json.get("questions", []))
             )
             db.add(new_quiz)
             db.flush()

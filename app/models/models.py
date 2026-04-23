@@ -14,6 +14,8 @@ class User(Base):
     avatar_url = Column(Text, nullable=True)
     role = Column(Enum('USER', 'ADMIN', name='user_roles'), default='USER')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    verification_token = Column(String(255), nullable=True)
+    is_verified = Column(Boolean, default=False)
 
     # Relationships
     documents = relationship("UserDocument", back_populates="owner")
@@ -47,6 +49,8 @@ class Mindmap(Base):
     title = Column(String(255), nullable=True)
     structure_json = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    status = Column(String, default="PENDING") # PENDING, PROCESSING, COMPLETED, FAILED
+    user_hint = Column(Text, nullable=True) 
 
     # Relationships
     document = relationship("UserDocument", back_populates="mindmaps")
@@ -66,6 +70,9 @@ class Quiz(Base):
     thumbnail_url = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    status = Column(String, default="PENDING") 
+    user_hint = Column(Text, nullable=True) 
+    num_questions = Column(Integer, default=0)
 
     # Relationships
     document = relationship("UserDocument", back_populates="quizzes")
@@ -111,6 +118,8 @@ class Essay(Base):
     essay_content = Column(Text, nullable=False)
     max_grade = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    status = Column(String, default="PENDING") 
+    user_hint = Column(Text, nullable=True) 
     # Relationships
     document = relationship("UserDocument", back_populates="essays")
     attempts = relationship("QuizAttempt", back_populates="essay")

@@ -1,6 +1,6 @@
 import os
 import fitz
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks, Query, Body
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -124,7 +124,8 @@ async def get_document_status(document_id : int, db: Session= Depends(get_db), c
 async def generate_quiz_and_save(
     document_id: int, 
     num_questions: int = 5,
-    difficulty: str = Query("MEDIUM", regex="^(EASY|MEDIUM|HARD)$"),
+    difficulty: str = Query("MEDIUM", pattern="^(EASY|MEDIUM|HARD)$"),
+    user_hint: str = Body(None, embed=True),
     db: Session = Depends(get_db),
     current_user: User= Depends(get_current_user)
     ):
@@ -132,17 +133,18 @@ async def generate_quiz_and_save(
 
         existing_document = service.get_user_document(db, document_id, current_user.user_id)
 
-        quiz_data = await generate_quiz_from_rag(document_id, num_questions, difficulty)
+        quiz_data = await generate_quiz_from_rag(document_id, num_questions, difficulty, user_hint)
         
         if "error" in quiz_data:
             raise HTTPException(status_code=500, detail=quiz_data["error"])
         
         try:
-            saved_quiz = QuizService.save_generated_quiz_to_db(db, quiz_data, document_id, current_user.user_id)
+            saved_quiz = QuizService.save_generated_quiz_to_db(db, quiz_data, document_id, current_user.user_id, user_hint)
             
             return {
                 "message": "Generate quiz successfully!",
                 "quiz_id": saved_quiz.quiz_id,
+                "user_hint": saved_quiz.user_hint,
                 "document_id": document_id,
                 "title": saved_quiz.title,
                 "difficulty": saved_quiz.difficulty,

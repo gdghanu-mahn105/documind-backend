@@ -50,13 +50,14 @@ def get_quizzes(
 
         sorted_quizzes = sorted(doc.quizzes, key=lambda x: x.quiz_id)
         for q in sorted_quizzes:
-            q_count = len(q.questions) if hasattr(q, 'questions') else 0
+        
             quizzes_data.append({
                 "quiz_id": q.quiz_id,
                 "title": q.title,
+                "user_hint": q.user_hint,
                 "status": "Completed" if q.max_grade > 0 else "Processing",
                 "score": q.max_grade,
-                "num_questions": q_count,
+                "num_questions": q.num_questions,
                 "difficulty": q.difficulty if hasattr(q, 'difficulty') else 'MEDIUM',
                 "last_opened": q.updated_at,
                 "created_at": q.created_at

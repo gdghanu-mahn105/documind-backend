@@ -25,6 +25,7 @@ class QuizDetailResponse(BaseModel):
     description: Optional[str]
     difficulty : str
     estimated_time: Optional[int]
+    user_hint: Optional[str]
     questions: List[QuestionDisplay]
 
     class Config:
@@ -62,6 +63,7 @@ class QuizItemResponse(BaseModel):
     num_questions: int 
     difficulty: str
     last_opened: Optional[datetime]
+    user_hint: Optional[str]
     created_at: datetime
 
     class Config:

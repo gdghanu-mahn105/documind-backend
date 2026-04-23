@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, BackgroundTasks
 from sqlalchemy.orm import Session, selectinload
 from app.database import get_db
 from app.api.auth import get_current_user
@@ -12,6 +12,7 @@ from datetime import datetime
 from app.models.models import User
 from app.schemas.essay_schemas import EssayAttemptListResponse, EssayAttemptDetailResponse
 from typing import List
+from app.database import SessionLocal
 
 router = APIRouter(
     prefix="/essays",
@@ -21,6 +22,8 @@ router = APIRouter(
 @router.post("/generate/{document_id}")
 async def create_essay(
     document_id: int, 
+    background_tasks: BackgroundTasks,
+    user_hint: str = Body(None, embed=True),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
     ):
@@ -32,27 +35,22 @@ async def create_essay(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    essay_data = await generate_single_essay_question(document_id)
-    
-    if not essay_data:
-        raise HTTPException(status_code=500, detail="AI failed to generate essay content")
-
     new_essay = models.Essay(
         document_id=document_id,
-        essay_title=essay_data.get('essay_title'),
-        quick_explanation=essay_data.get('quick_explanation'),
-        essay_content=essay_data.get('essay_content'),
-        max_grade=essay_data.get('max_grade', 0.0)
+        essay_title="Đang khởi tạo tiêu đề...",
+        status="PENDING",
+        user_hint=user_hint
     )
-    
     db.add(new_essay)
     db.commit()
     db.refresh(new_essay)
+
+    background_tasks.add_task(bg_generate_essay_task, new_essay.essay_id, document_id, user_hint)
     
     return {
-        "status": "success",
+        "status": "pending",
         "essay_id": new_essay.essay_id,
-        "title": new_essay.essay_title
+        "message": "AI is processing to generate essay question!"
     }
 
 @router.get("/list-by-documents")
@@ -68,7 +66,7 @@ def get_essays_overview(
             models.UserDocument.user_id == current_user.user_id,
             models.UserDocument.essays.any()
         )
-        .options(selectinload(models.UserDocument.essays)) # "Hốt" luôn essay về trong 1 nốt nhạc
+        .options(selectinload(models.UserDocument.essays))
         .all()
     )    
     result = []
@@ -81,12 +79,14 @@ def get_essays_overview(
                 "essay_title": essay.essay_title,
                 "full_content": essay.essay_content,
                 "created_at": essay.created_at,
-                "max_grade": essay.max_grade
+                "max_grade": essay.max_grade,
+                "status": essay.status
             })
             
         result.append({
             "document_id": doc.document_id,
             "file_name": doc.file_name,
+            "created_at": doc.created_at,
             "essay_count": len(essay_previews),
             "essays": essay_previews
         })
@@ -112,7 +112,8 @@ def get_essay_detail(
         "quick_explanation": essay.quick_explanation,
         "essay_content": essay.essay_content,
         "max_grade": essay.max_grade,
-        "document_name": essay.document.file_name
+        "document_name": essay.document.file_name,
+        "status": essay.status
     }
 def to_markdown_list(data):
     if isinstance(data, list):
@@ -244,3 +245,59 @@ def get_essay_attempt_detail (
 
 
     
+
+async def bg_generate_essay_task(essay_id: int, document_id: int, user_hint: str = None):
+    db = SessionLocal()
+    try:
+        essay = db.query(models.Essay).filter(models.Essay.essay_id == essay_id).first()
+        if essay:
+            essay.status = "PROCESSING"
+            db.commit()
+
+       
+        essay_data = await generate_single_essay_question(document_id, user_hint)
+
+        if essay_data:
+            essay.essay_title = essay_data.get('essay_title')
+            essay.quick_explanation = essay_data.get('quick_explanation')
+            essay.essay_content = essay_data.get('essay_content')
+            essay.max_grade = essay_data.get('max_grade', 0.0)
+            essay.status = "COMPLETED"
+        else:
+            essay.status = "FAILED"
+        
+        db.commit()
+    except Exception as e:
+        print(f"Error in background task Essay: {e}")
+        essay = db.query(models.Essay).filter(models.Essay.essay_id == essay_id).first()
+        if essay:
+            essay.status = "FAILED"
+            db.commit()
+    finally:
+        db.close()
+
+@router.get("/{essay_id}/status")
+def get_essay_status(
+    essay_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    essay = db.query(models.Essay).join(models.UserDocument).filter(
+        models.Essay.essay_id == essay_id,
+        models.UserDocument.user_id == current_user.user_id
+    ).first()
+    
+    if not essay:
+        raise HTTPException(status_code=404, detail="Essay not found")
+
+    return {
+        "essay_id": essay.essay_id,
+        "status": essay.status,
+        "title": essay.essay_title,
+        "content": {
+            "essay_title": essay.essay_title,
+            "quick_explanation": essay.quick_explanation,
+            "essay_content": essay.essay_content,
+            "max_grade": essay.max_grade
+        } if essay.status == "COMPLETED" else None
+    }
