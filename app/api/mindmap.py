@@ -144,7 +144,7 @@ def update_mindmap(
     }
 
 
-@router.delete("/{mindmap_id}", status_code=status.HTTP_200_OK)
+@router.delete("/{mindmap_id}", status_code=status.HTTP_200_OK, summary="Soft-delete a mindmap")
 def delete_mindmap(
     mindmap_id: int,
     db: Session = Depends(get_db),
@@ -163,7 +163,7 @@ def delete_mindmap(
         )
 
     try:
-        db.delete(mindmap)
+        mindmap.is_deleted = True
         db.commit()
         
         return {

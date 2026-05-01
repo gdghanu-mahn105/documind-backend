@@ -61,6 +61,7 @@ def register(
 
 @router.post("/verify-otp")
 def verify_otp(email: str, otp: str, db: Session = Depends(get_db)):
+    
     user = db.query(User).filter(
         User.email == email,
         User.verification_token == otp

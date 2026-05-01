@@ -301,3 +301,26 @@ def get_essay_status(
             "max_grade": essay.max_grade
         } if essay.status == "COMPLETED" else None
     }
+
+@router.delete("/{essay_id}", summary="Soft-delete an essay")
+def delete_essay(
+    essay_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    essay = db.query(models.Essay).join(models.UserDocument).filter(
+        models.Essay.essay_id == essay_id,
+        models.UserDocument.user_id == current_user.user_id
+    ).first()
+    
+    if not essay:
+        raise HTTPException(status_code=404, detail="Essay not found")
+
+    try:
+        db.delete(essay)
+        db.commit()
+        return {"message": f"Essay '{essay.essay_title}' deleted successfully."}
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting essay: {e}")
+        raise HTTPException(status_code=500, detail="Error when deleting essay.")

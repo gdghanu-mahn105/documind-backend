@@ -51,6 +51,7 @@ class Mindmap(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     status = Column(String, default="PENDING") # PENDING, PROCESSING, COMPLETED, FAILED
     user_hint = Column(Text, nullable=True) 
+    is_deleted = Column(Boolean, default=False)
 
     # Relationships
     document = relationship("UserDocument", back_populates="mindmaps")
@@ -120,6 +121,7 @@ class Essay(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     status = Column(String, default="PENDING") 
     user_hint = Column(Text, nullable=True) 
+    is_deleted = Column(Boolean, default=False)
     # Relationships
     document = relationship("UserDocument", back_populates="essays")
     attempts = relationship("QuizAttempt", back_populates="essay")
