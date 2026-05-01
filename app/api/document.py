@@ -234,7 +234,7 @@ async def get_all_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = db.query(UserDocument).filter(UserDocument.user_id== current_user.user_id)
+    query = db.query(UserDocument).filter(UserDocument.user_id== current_user.user_id, UserDocument.is_deleted == False)
 
     if search:
         query= query.filter(UserDocument.file_name.ilike(f"%{search}%"))

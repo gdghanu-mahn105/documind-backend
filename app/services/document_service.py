@@ -22,7 +22,10 @@ class DocumentService:
 
     @staticmethod
     def get_user_document(db: Session, document_id: int, user_id: int):
-        doc = db.query(UserDocument).filter(UserDocument.document_id == document_id).first()
+        doc = db.query(UserDocument).filter(
+            UserDocument.document_id == document_id,
+            UserDocument.is_deleted == False
+        ).first()
         if not doc:
             raise HTTPException(status_code=404, detail="Document not found")
         if doc.user_id != user_id:

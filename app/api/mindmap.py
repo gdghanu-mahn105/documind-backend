@@ -24,11 +24,14 @@ def get_mindmaps_grouped_by_documents(
     documents = db.query(models.UserDocument).options(
         selectinload(models.UserDocument.mindmaps)
     ).filter(models.UserDocument.user_id == current_user.user_id
+            ,models.UserDocument.is_deleted == False
              ).order_by( desc(models.UserDocument.created_at)
               ).all()
 
     result = []
     for doc in documents:
+        if doc.is_deleted:
+            continue
         result.append({
             "document_id": doc.document_id,
             "file_name": doc.file_name,
@@ -40,7 +43,7 @@ def get_mindmaps_grouped_by_documents(
                     "title": m.title,
                     "created_at": m.created_at,
                     "status": m.status
-                } for m in doc.mindmaps
+                } for m in doc.mindmaps if not m.is_deleted
             ]
         })    
     return result
@@ -78,7 +81,7 @@ def get_mindmap_status(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    mindmap = db.query(models.Mindmap).filter(models.Mindmap.mindmap_id == mindmap_id).first()
+    mindmap = db.query(models.Mindmap).filter(models.Mindmap.mindmap_id == mindmap_id, models.Mindmap.is_deleted == False).first()
     
     if not mindmap:
         raise HTTPException(status_code=404, detail="Không thấy sơ đồ này")
@@ -96,7 +99,7 @@ def get_mindmap_detail(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    mindmap = db.query(models.Mindmap).filter(models.Mindmap.mindmap_id == mindmap_id).first()
+    mindmap = db.query(models.Mindmap).filter(models.Mindmap.mindmap_id == mindmap_id, models.Mindmap.is_deleted == False).first()
     
     if not mindmap:
         raise HTTPException(status_code=404, detail="Mindmap not found")
@@ -120,7 +123,8 @@ def update_mindmap(
 ):
     mindmap = db.query(models.Mindmap).join(models.UserDocument).filter(
         models.Mindmap.mindmap_id == mindmap_id,
-        models.UserDocument.user_id == current_user.user_id
+        models.UserDocument.user_id == current_user.user_id,
+        models.Mindmap.is_deleted == False
     ).first()
     if not mindmap:
         raise HTTPException(status_code=404, detail="Mindmap not found or access denied")
@@ -153,7 +157,9 @@ def delete_mindmap(
    
     mindmap = db.query(models.Mindmap).join(models.UserDocument).filter(
         models.Mindmap.mindmap_id == mindmap_id,
-        models.UserDocument.user_id == current_user.user_id
+        models.UserDocument.user_id == current_user.user_id,
+        models.Mindmap.is_deleted == False
+
     ).first()
 
     if not mindmap:
@@ -178,7 +184,7 @@ def delete_mindmap(
 async def generate_mindmap_task(mindmap_id: int, document_id: int, user_hint: str):
     db = SessionLocal()
     try:
-        mindmap = db.query(models.Mindmap).filter(models.Mindmap.mindmap_id == mindmap_id).first()
+        mindmap = db.query(models.Mindmap).filter(models.Mindmap.mindmap_id == mindmap_id, models.Mindmap.is_deleted == False).first()
         if mindmap:
             mindmap.status = "PROCESSING"
             db.commit()
@@ -195,7 +201,7 @@ async def generate_mindmap_task(mindmap_id: int, document_id: int, user_hint: st
         db.commit()
     except Exception as e:
         print(f"Error in background task: {e}")
-        mindmap = db.query(models.Mindmap).filter(models.Mindmap.mindmap_id == mindmap_id).first()
+        mindmap = db.query(models.Mindmap).filter(models.Mindmap.mindmap_id == mindmap_id, models.Mindmap.is_deleted == False).first()
         if mindmap:
             mindmap.status = "FAILED"
             db.commit()

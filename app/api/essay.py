@@ -30,7 +30,8 @@ async def create_essay(
 
     doc = db.query(models.UserDocument).filter(
         models.UserDocument.document_id == document_id,
-        models.UserDocument.user_id == current_user.user_id
+        models.UserDocument.user_id == current_user.user_id,
+        models.UserDocument.is_deleted == False
     ).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -64,7 +65,8 @@ def get_essays_overview(
         db.query(models.UserDocument)
         .filter(
             models.UserDocument.user_id == current_user.user_id,
-            models.UserDocument.essays.any()
+            models.UserDocument.essays.any(),
+            models.UserDocument.is_deleted == False
         )
         .options(selectinload(models.UserDocument.essays))
         .all()
@@ -74,6 +76,8 @@ def get_essays_overview(
         
         essay_previews = []
         for essay in doc.essays:
+            if essay.is_deleted:
+                continue
             essay_previews.append({
                 "essay_id": essay.essay_id,
                 "essay_title": essay.essay_title,
@@ -101,7 +105,8 @@ def get_essay_detail(
     ):
     essay = db.query(models.Essay).join(models.UserDocument).filter(
         models.Essay.essay_id == essay_id,
-        models.UserDocument.user_id == current_user.user_id
+        models.UserDocument.user_id == current_user.user_id,
+        models.UserDocument.is_deleted == False
     ).first()
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
@@ -127,7 +132,7 @@ async def submit_essay(
     text_answer: str = Body(..., embed=True),
     db: Session = Depends(get_db)
 ):
-    essay = db.query(models.Essay).filter(models.Essay.essay_id == essay_id).first()
+    essay = db.query(models.Essay).filter(models.Essay.essay_id == essay_id, models.Essay.is_deleted == False).first()
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
    
@@ -195,7 +200,7 @@ def get_essay_attempts (
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    essay_exists = db.query(models.Essay).filter(models.Essay.essay_id == essay_id).first()
+    essay_exists = db.query(models.Essay).filter(models.Essay.essay_id == essay_id, models.Essay.is_deleted == False).first()
     if not essay_exists:
         raise HTTPException(status_code=404, detail="Essay not found")
     
@@ -214,7 +219,7 @@ def get_essay_attempt_detail (
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    essay_exists = db.query(models.Essay).filter(models.Essay.essay_id == essay_id).first()
+    essay_exists = db.query(models.Essay).filter(models.Essay.essay_id == essay_id, models.Essay.is_deleted == False).first()
     if not essay_exists:
         raise HTTPException(status_code=404, detail="Essay not found")
 
@@ -249,7 +254,7 @@ def get_essay_attempt_detail (
 async def bg_generate_essay_task(essay_id: int, document_id: int, user_hint: str = None):
     db = SessionLocal()
     try:
-        essay = db.query(models.Essay).filter(models.Essay.essay_id == essay_id).first()
+        essay = db.query(models.Essay).filter(models.Essay.essay_id == essay_id, models.Essay.is_deleted == False).first()
         if essay:
             essay.status = "PROCESSING"
             db.commit()
@@ -269,7 +274,7 @@ async def bg_generate_essay_task(essay_id: int, document_id: int, user_hint: str
         db.commit()
     except Exception as e:
         print(f"Error in background task Essay: {e}")
-        essay = db.query(models.Essay).filter(models.Essay.essay_id == essay_id).first()
+        essay = db.query(models.Essay).filter(models.Essay.essay_id == essay_id, models.Essay.is_deleted == False).first()
         if essay:
             essay.status = "FAILED"
             db.commit()
@@ -284,7 +289,8 @@ def get_essay_status(
 ):
     essay = db.query(models.Essay).join(models.UserDocument).filter(
         models.Essay.essay_id == essay_id,
-        models.UserDocument.user_id == current_user.user_id
+        models.UserDocument.user_id == current_user.user_id,
+        models.UserDocument.is_deleted == False
     ).first()
     
     if not essay:
@@ -310,14 +316,15 @@ def delete_essay(
 ):
     essay = db.query(models.Essay).join(models.UserDocument).filter(
         models.Essay.essay_id == essay_id,
-        models.UserDocument.user_id == current_user.user_id
+        models.UserDocument.user_id == current_user.user_id,
+        models.UserDocument.is_deleted == False
     ).first()
     
     if not essay:
         raise HTTPException(status_code=404, detail="Essay not found")
 
     try:
-        db.delete(essay)
+        essay.is_deleted = True
         db.commit()
         return {"message": f"Essay '{essay.essay_title}' deleted successfully."}
     except Exception as e:

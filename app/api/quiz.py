@@ -23,7 +23,7 @@ def get_quizzes(
     page: int = 1,
     page_size: int = 10,
 ):
-    query = db.query(UserDocument).filter(UserDocument.user_id== current_user.user_id)
+    query = db.query(UserDocument).filter(UserDocument.user_id== current_user.user_id, UserDocument.is_deleted == False)
 
     if search:
         query= query.filter(UserDocument.file_name.ilike(f"%{search}%"))
@@ -50,7 +50,8 @@ def get_quizzes(
 
         sorted_quizzes = sorted(doc.quizzes, key=lambda x: x.quiz_id)
         for q in sorted_quizzes:
-        
+            if q.is_deleted:
+                continue
             quizzes_data.append({
                 "quiz_id": q.quiz_id,
                 "title": q.title,

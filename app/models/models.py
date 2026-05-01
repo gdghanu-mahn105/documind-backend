@@ -34,6 +34,7 @@ class UserDocument(Base):
     summary = Column(Text, nullable=True)
     processing_status = Column(String, default="PENDING")
     last_accessed_at = Column(DateTime, default=None, nullable=True)
+    is_deleted = Column(Boolean, default=False)
 
     # Relationships
     owner = relationship("User", back_populates="documents")
