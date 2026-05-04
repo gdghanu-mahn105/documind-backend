@@ -108,4 +108,4 @@ Docker Compose will create:
 - The API uses `python-dotenv` to load environment variables from `.env`
 - When running with Docker Compose, `DATABASE_URL` is automatically configured from `POSTGRES_*` variables
 - Uploaded PDF files are stored in the `upload` folder
-- RAG data is stored in the `lightrag_storage` folder
+- RAG data is stored in the `lightrag_storage` folder with separeated sub-folder for each documents
