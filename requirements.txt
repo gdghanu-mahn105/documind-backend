@@ -1,4 +1,4 @@
-# 1. Ép tải bản CPU cho nhẹ (giảm 2GB rác)
+# 1. Force CPU version of PyTorch
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # 2. Web & Server
@@ -14,7 +14,7 @@ bcrypt==4.0.1
 SQLAlchemy==2.0.49
 psycopg2-binary
 
-# 4. AI & RAG (Phiên bản ổn định)
+# 4. AI & RAG
 openai>=1.0.0
 torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
 numpy<2.0.0
@@ -24,10 +24,10 @@ sentence-transformers==2.7.0
 lightrag-hku==1.4.11
 protobuf==5.29.6
 
-# 5. Xử lý PDF
+# 5. PDF processing
 PyMuPDF==1.27.2.2
 
-# 6. Tiện ích
+# 6. 
 pydantic[email]==2.12.5
 
 resend
